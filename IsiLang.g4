@@ -11,6 +11,8 @@ grammar IsiLang;
 	import br.com.professorisidro.isilanguage.ast.CommandEscrita;
 	import br.com.professorisidro.isilanguage.ast.CommandAtribuicao;
 	import br.com.professorisidro.isilanguage.ast.CommandDecisao;
+	import br.com.professorisidro.isilanguage.ast.CommandEnquanto;
+	import br.com.professorisidro.isilanguage.ast.CommandFor;
 	import java.util.ArrayList;
 	import java.util.Stack;
 }
@@ -31,6 +33,16 @@ grammar IsiLang;
 	private String _exprDecision;
 	private ArrayList<AbstractCommand> listaTrue;
 	private ArrayList<AbstractCommand> listaFalse;
+	
+	private String _exprWhile;
+	private ArrayList<AbstractCommand> listaWhile;
+	
+	private String _inicialID;
+	private String _finalID;
+	private String _inicialContent;
+	private String _finalContent;
+	private String _exprFor;
+	private ArrayList<AbstractCommand> listaFor;
 	
 	public void verificaID(String id){
 		if (!symbolTable.exists(id)){
@@ -101,7 +113,9 @@ bloco	: { curThread = new ArrayList<AbstractCommand>();
 cmd		:  cmdleitura  
  		|  cmdescrita 
  		|  cmdattrib
- 		|  cmdselecao  
+ 		|  cmdselecao 
+ 		|  cmdenquanto
+ 		|  cmdfor 
 		;
 		
 cmdleitura	: 'leia' AP
@@ -143,6 +157,48 @@ cmdattrib	:  ID { verificaID(_input.LT(-1).getText());
                }
 			;
 			
+cmdenquanto	: 'enquanto' AP
+		                    ID    { _exprWhile = _input.LT(-1).getText(); }
+		                    OPREL { _exprWhile += _input.LT(-1).getText(); }
+		                    (ID | NUMBER) { _exprWhile += _input.LT(-1).getText(); }
+		                    FP 
+		                    ACH 
+		                    { curThread = new ArrayList<AbstractCommand>(); 
+		                      stack.push(curThread);
+		                    }
+		                    (cmd)+ 
+
+		                    FCH 
+		                    {
+		                       listaWhile = stack.pop();
+		                       CommandEnquanto cmd = new CommandEnquanto(_exprWhile, listaWhile);
+		                       stack.peek().add(cmd);	
+		                    } 	
+		    ; 
+		    
+cmdfor : 'for' AP
+                    ID { verificaID(_input.LT(-1).getText());
+                        _inicialID = _input.LT(-1).getText();
+                       } 
+                      ATTR { _inicialContent = ""; } 
+                       expr
+                       SC
+                       ID    { _exprFor = _input.LT(-1).getText(); }
+                    OPREL { _exprFor += _input.LT(-1).getText(); }
+                    (ID | NUMBER) { _exprFor += _input.LT(-1).getText(); }
+                       expr
+                       ID { verificaID(_input.LT(-1).getText());
+                        _finalID = _input.LT(-1).getText();
+                       } 
+                      ATTR { _finalContent = ""; }
+                      expr
+                      FCH
+               {
+                    listaFor =  stack.pop();
+                    CommandFor cmd = new CommandFor(_inicialID, _finalID, _inicialContent, _finalContent, _exprFor, listaFor);
+                    stack.peek().add(cmd);
+               }
+            ;			
 			
 cmdselecao  :  'se' AP
                     ID    { _exprDecision = _input.LT(-1).getText(); }
